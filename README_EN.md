@@ -3,6 +3,8 @@
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey.svg)
 ![Target](https://img.shields.io/badge/Domain-Neuromorphic%20%2F%20Edge%20AI-success.svg)
 
+
+[Русская версия](README.md)
 # ndlc — NDL Toolchain v1.0
 
 **NDL (Neural Description Language)** is a compiled domain-specific language for modeling, training, and deploying Spiking Neural Networks (SNNs)[cite: 2]. The `ndlc` toolchain compiles `.ndl` source files into **native machine code (via LLVM IR)** and generates **CUDA PTX** for GPU acceleration[cite: 2]. Developers interact exclusively with `.ndl`, `ndl.toml`, and the `ndlc` CLI—all intermediate representations remain completely abstracted[cite: 2].
