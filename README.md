@@ -2,6 +2,9 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey.svg)
 ![Target](https://img.shields.io/badge/Domain-Neuromorphic%20%2F%20Edge%20AI-success.svg)
+
+
+[English version](README_EN.md)
 # ndlc — NDL Toolchain v1.0
 
 **NDL (Neural Description Language)** — компилируемый язык для моделирования,
