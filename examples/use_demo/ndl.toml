@@ -1,0 +1,7 @@
+[project]
+name = "use-demo"
+version = "0.1.0"
+main = "main.ndl"
+
+[dependencies]
+mylib = { path = "vendor/mylib" }

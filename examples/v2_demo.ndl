@@ -1,0 +1,85 @@
+// NDL v2.0 — smoke test of the asynchronous continuous-time environment.
+// Exercises: signals (modulated 3-factor STDP), oscillators, external streams
+// with Poisson binding, run_continuous/stop_continuous, set_plasticity,
+// prune_weights, and the RSOL readout builtins.
+import "stdlib/math.ndl";
+
+// ── 1. VBM interface: 8-dim sensory stream Poisson-encoded into Input ────────
+external stream Sense[8];
+node_group Input[8]   : Excitatory(tau=10.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group Core[24]   : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group Read[4]    : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+
+bind_input_stream(Sense, Input, encoding=Poisson, max_freq=80.0Hz, kick=100.0);
+
+// ── 3. Drive & Value Engine: dopamine as the STDP modulator ─────────────────
+signal Dopamine : float = 0.0;
+
+// ── 2. Connectivity: feedforward + SIL-style readout loop ───────────────────
+dense_connect(Input, Core, weight_func=random_uniform(2.0, 6.0), plastic=true);
+dense_connect(Core, Read, weight_func=random_uniform(0.5, 2.0), plastic=true);
+configure_stdp(Core -> Read, lr_pot=0.02, lr_dep=0.01, window_ms=20.0,
+               modulator=Dopamine);
+sparse_connect(Read, Core, density=0.25, weight=1.5, plastic=false);
+
+// ── 4. Background rhythms: alpha on the core ────────────────────────────────
+oscillator Alpha(frequency=10.0Hz, amplitude=3.0, target=Core);
+
+// Prime the sensory stream so the network is alive from the first tick
+// (a real VBM transformer keeps the stream fed from the host side).
+for (i in 0..8) {
+    stream_set(Sense, i, ((i + 0) % 2) * 1.0);
+}
+
+let beat = 0;
+let lastBeat = 0.0;
+
+on_spike(Read) {
+    // Value Engine: novelty proxy = L2 norm of readout potentials → dopamine
+    let p = get_membrane_potentials(Read);
+    let novelty = vector_l2_norm(p);
+    set Dopamine = novelty;   // 3-factor STDP learns while M(t) ≠ 0
+
+    if (spike_time > 60.0 && spike_time - lastBeat > 40.0) {
+        set lastBeat = spike_time;
+        set beat = beat + 1;
+
+        // VBM stand-in: switch the sensory pattern (concept A ↔ concept B).
+        let k = beat % 2;
+        for (i in 0..8) {
+            stream_set(Sense, i, ((i + k) % 2) * 1.0);
+        }
+
+        if (beat == 2) {
+            let w0 = get_weight(Core, Read, 0, 0);
+            print("Beat 2  weight(0,0) =", w0, " dopamine =", Dopamine);
+            // Sleep mode: freeze learning and consolidate.
+            print("SLEEP: plasticity off");
+            set_plasticity(Input -> Core, enabled=false);
+            set_plasticity(Core -> Read, enabled=false);
+            prune_weights(Core -> Read, threshold=0.05);
+        }
+        if (beat == 3) {
+            print("WAKE: plasticity on");
+            set_plasticity(Input -> Core, enabled=true);
+            set_plasticity(Core -> Read, enabled=true);
+        }
+        if (beat == 5) {
+            let w1 = get_weight(Core, Read, 0, 0);
+            print("Beat 5  weight(0,0) =", w1, " sim time =", spike_time, "ms");
+            stop_continuous();
+        }
+    }
+}
+
+run_continuous(dt=1.0ms, device=CPU) {
+    print("AGI core online: continuous mode started");
+}
+
+// Main thread parks here while the event loop lives; the Read-handler stops
+// the episode after beat 5.
+wait_continuous;
+
+print("Continuous episode finished.");
+export_raster(Input, "v2_input_raster.csv");
+export_raster(Read, "v2_read_raster.csv");

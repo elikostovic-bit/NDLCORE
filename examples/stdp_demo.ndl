@@ -1,0 +1,26 @@
+// NDL v1.0 — STDP demo: pre->post firing with +10ms lead potentiates weights.
+import "stdlib/math.ndl";
+
+node_group Pre[8]  : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group Post[8] : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+
+dense_connect(Pre, Post, weight=0.05, plastic=true);
+configure_stdp(Pre -> Post, lr_pot=0.02, lr_dep=0.01, window_ms=20.0);
+
+let w0 = get_weight(Pre, Post, 0, 0);
+print("Weight before training:", w0);
+
+// Poisson-like drive: repeatedly stimulate neuron pairs.
+for (rep in 0..6) {
+    run (duration = 100ms, dt = 1.0ms, device = CPU) {
+        at 10ms emit Pre[0..1](current = 40.0);
+        at 20ms emit Post[0..1](current = 55.0);
+    }
+}
+
+let w1 = get_weight(Pre, Post, 0, 0);
+print("Weight after training: ", w1);
+print("Delta:                  ", w1 - w0);
+
+save_checkpoint("models/stdp_demo.ndlbin");
+print("Checkpoint saved.");

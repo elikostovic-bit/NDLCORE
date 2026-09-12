@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# NDL v1.0 — project manifest (reference program)
+# ---------------------------------------------------------------------------
+[project]
+name = "snn-demo"
+version = "0.1.0"
+ndl_version = "1.0"
+authors = ["NDL Team"]
+main = "main.ndl"
+
+[build]
+target = "auto"    # auto | cpu | gpu
+opt_level = 2      # 0 | 1 | 2 | 3 (LLVM pass manager level)
+fastmath = true    # unsafe FP optimizations (LLVM fast-math flags)
+
+[simulation]
+seed = 42
+
+[dependencies]
+# name = { path = "vendor/name" }   # local path packages (v1.0)

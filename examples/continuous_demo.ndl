@@ -1,0 +1,70 @@
+// NDL v2.0 — continuous-time demo: async event loop + 3-factor STDP,
+// background oscillator, external input stream (Poisson), RSOL tensor math
+// and structural plasticity (sleep-phase primitives) while the loop ticks.
+//
+//   ndlc run examples/continuous_demo.ndl
+
+// ---- third-factor channel: global scalar reward/prediction error -----------
+signal rpe : float = 0.0;
+
+// ---- populations ------------------------------------------------------------
+node_group Sensory[8] : Excitatory(tau = 20.0, threshold = -55.0, rest = -70.0, reset = -75.0);
+node_group Action[4]  : Excitatory(tau = 20.0, threshold = -55.0, rest = -70.0, reset = -75.0);
+
+// ---- wiring: plastic projection gated by the rpe channel --------------------
+dense_connect(Sensory, Action, weight = 8.0, plastic = true);
+configure_stdp(Sensory -> Action,
+               lr_pot = 0.012, lr_dep = 0.010, window_ms = 20.0,
+               modulator = rpe);
+
+// ---- background rhythm (10 Hz alpha-like drive onto Action) -----------------
+oscillator alpha(frequency = 10Hz, amplitude = 30.0, target = Action);
+
+// ---- external input stream: 8 values per frame, Poisson-encoded -------------
+external stream sensory_in[8];
+
+let w0 = get_weight(Sensory, Action, 0, 0);
+
+// ---- async continuous-time loop (returns immediately) ------------------------
+run_continuous(dt = 1.0ms, device = CPU) {
+    enable_oscillator(alpha);
+    bind_input_stream(sensory_in -> Sensory, encoding = Poisson, max_freq = 80.0Hz);
+}
+
+// ---- main thread: closed-loop CPE while the simulation ticks ----------------
+let w_pred = tensor_new2(4, 4);          // untrained linear readout (zeros):
+                                         // prediction y = 0 ≠ v -> e = ||v - y|| > 0
+
+let frame = tensor_new(8);
+
+for (k in 0..120) {
+    // stream a random frame into the loop (SEB-bridge style push)
+    for (i in 0..8) {
+        tensor_set(frame, i, random_uniform(0.5, 1.0));
+    }
+    push_stream("sensory_in", frame);
+
+    // pace: give the sim thread ticks between frames (frames are consumed
+    // latest-wins, so an unpaced burst would collapse into a single tick)
+    for (p in 0..30000) { let idle = p; }
+
+    // read the live membrane state WITHOUT stopping the simulation
+    let v = get_membrane_potentials(Action);
+    let vp = predict_linear(v, w_pred);          // y = W · v
+    let err = vector_l2_norm(v - vp);            // || v - W·v ||
+
+    // drive the third factor: M(t) = 0.002 · ||e||  (printed for inspection)
+    rpe = err * 0.002;
+}
+
+// ---- sleep phase: consolidation while the loop is still running -------------
+prune_weights(Sensory -> Action, threshold = 0.30);
+set_plasticity(Sensory -> Action, enabled = false);
+
+// ---- graceful shutdown -------------------------------------------------------
+stop_continuous();
+
+let w1 = get_weight(Sensory, Action, 0, 0);
+print("w(0,0) before:", w0);
+print("w(0,0) after :", w1);
+print("pruned or >= thr:", w1 == 0.0 || w1 >= 0.30);

@@ -1,0 +1,18 @@
+// NDL v1.0 — minimal example: two groups, one-to-one projection, single run.
+import "stdlib/math.ndl";
+
+node_group Source[64]      : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group Target[64]      : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+
+one_to_one_connect(Source, Target, weight=80.0, plastic=false);
+
+let total = 200;
+print("Minimal LIF relay, duration(ms):", total);
+
+run (duration = total * 1ms, dt = 1.0ms, device = CPU) {
+    at 10ms emit Source[0..8](current = 30.0);
+    at 60ms emit Source[8..16](current = 35.0);
+}
+
+print("Done. Spikes exported.");
+export_raster(Target, "minimal_spikes.csv");

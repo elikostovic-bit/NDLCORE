@@ -1,0 +1,35 @@
+// v2.1 smoke test: sensory stdin IO + sim_time + file_exists + disable_oscillator
+signal da : float = 0.0;
+
+node_group Sens[4] : Excitatory(tau = 10.0, threshold = -55.0, rest = -70.0, reset = -75.0);
+oscillator alpha(frequency = 10Hz, amplitude = 20.0, target = Sens);
+
+external stream s_in[4];
+
+run_continuous(dt = 1.0ms, device = CPU) {
+    enable_oscillator(alpha);
+    bind_input_stream(s_in -> Sens, encoding = Poisson, max_freq = 60.0Hz);
+}
+
+print("file_exists(main file):", file_exists("examples/io_smoke.ndl"));
+print("file_exists(nonsense):", file_exists("no_such_file_xyz.ndl"));
+
+let ck = 0;
+let st0 = sim_time();
+while (ck < 3) {
+    if (input_ready()) {
+        let f0 = read_f64();           // frame type tag
+        if (f0 == 2.0) { ck = 99; }    // shutdown frame
+        else {
+            let a = read_f64();
+            let b = read_f64();
+            print("frame:", f0, "a =", a, "b =", b, "sim_t =", sim_time());
+            da = da + 0.25;
+            ck = ck + 1;
+        }
+    }
+}
+
+stop_continuous();
+print("da =", da, "sim_time(ms) =", sim_time(), "wall~now:", now_ms() > 0);
+print("IO_SMOKE_OK");

@@ -1,0 +1,10 @@
+use mylib;
+import "stdlib/math.ndl";
+
+print("Drive from package:", DRIVE, "| tau:", BASE_TAU);
+
+run (duration = 60ms, dt = 1.0ms, device = CPU) {
+    at 5ms emit PresetSource[0..4](current = DRIVE);
+}
+export_raster(PresetSink, "pkg_spikes.csv");
+print("package demo done");

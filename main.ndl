@@ -1,0 +1,32 @@
+// Конфигурация проекта определяется в ndl.toml
+import "stdlib/math.ndl";
+
+// 1. Создание топологии сети
+node_group InputLayer[1000] : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group HiddenLayer[5000] : Excitatory(tau=30.0, threshold=-50.0, rest=-70.0, reset=-80.0);
+node_group Interneurons[1000] : Inhibitory(tau=10.0, threshold=-50.0, rest=-70.0, reset=-70.0);
+node_group OutputLayer[100]  : Excitatory(tau=15.0, threshold=-52.0, rest=-70.0, reset=-75.0);
+
+// 2. Связывание слоев
+dense_connect(InputLayer, HiddenLayer, weight_func=random_gaussian(0.5, 0.1), plastic=true);
+configure_stdp(InputLayer -> HiddenLayer, lr_pot=0.01, lr_dep=0.005, window_ms=20.0);
+
+sparse_connect(HiddenLayer, Interneurons, density=0.2, weight=0.8);
+dense_connect(Interneurons, HiddenLayer, weight=-1.2, plastic=false);
+dense_connect(HiddenLayer, OutputLayer, weight=0.4, plastic=true);
+
+// 3. Выполнение и эксперимент
+let epochs = 10;
+print("Starting SNN simulation on GPU across epochs:", epochs);
+
+for (e in 1..epochs) {
+    run (duration = 100ms, dt = 1.0ms, device = GPU) {
+        at 5ms emit InputLayer[0..100](current = 25.0);
+        at 20ms emit InputLayer[100..300](current = 30.0);
+    }
+    print("Epoch completed:", e);
+}
+
+print("Saving trained network state...");
+save_checkpoint("models/snn_trained.ndlbin");
+export_raster(OutputLayer, "output_spikes.csv");

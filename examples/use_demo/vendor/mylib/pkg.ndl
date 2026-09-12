@@ -1,0 +1,7 @@
+// mylib package: shared network presets
+let BASE_TAU = 20.0;
+let DRIVE = 35.0;
+
+node_group PresetSource[32] : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+node_group PresetSink[32]   : Excitatory(tau=20.0, threshold=-55.0, rest=-70.0, reset=-75.0);
+one_to_one_connect(PresetSource, PresetSink, weight=80.0, plastic=false);

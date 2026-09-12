@@ -1,0 +1,6 @@
+// NDL v1.0 — standard math package (constants; numeric builtins are compiler-intrinsic)
+// Available intrinsics: sin cos exp log sqrt random_uniform random_gaussian
+
+let E  = 2.718281828459045;
+let PI = 3.141592653589793;
+let LN2 = 0.6931471805599453;
